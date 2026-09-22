@@ -1,0 +1,97 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'core/db/database.dart';
+import 'core/utils/date_helpers.dart';
+import 'data/models.dart';
+import 'data/repository.dart';
+
+final repoProvider =
+    Provider<KostRepository>((ref) => KostRepository(AppDatabase.instance));
+
+/// Every data provider watches this. After any write, call [notifyChanged]
+/// and all screens refresh themselves.
+final dataVersionProvider = StateProvider<int>((ref) => 0);
+
+void notifyChanged(WidgetRef ref) {
+  ref.read(dataVersionProvider.notifier).state++;
+}
+
+final roomOverviewsProvider =
+    FutureProvider.autoDispose<List<RoomOverview>>((ref) async {
+  ref.watch(dataVersionProvider);
+  return ref.read(repoProvider).getRoomOverviews();
+});
+
+final roomProvider =
+    FutureProvider.autoDispose.family<Room?, int>((ref, id) async {
+  ref.watch(dataVersionProvider);
+  return ref.read(repoProvider).getRoom(id);
+});
+
+final roomPhotosProvider =
+    FutureProvider.autoDispose.family<List<RoomPhoto>, int>((ref, roomId) async {
+  ref.watch(dataVersionProvider);
+  return ref.read(repoProvider).getRoomPhotos(roomId);
+});
+
+final tenantOverviewsProvider =
+    FutureProvider.autoDispose<List<TenantOverview>>((ref) async {
+  ref.watch(dataVersionProvider);
+  return ref.read(repoProvider).getTenantOverviews();
+});
+
+final tenantOverviewProvider =
+    FutureProvider.autoDispose.family<TenantOverview?, int>((ref, tenantId) async {
+  ref.watch(dataVersionProvider);
+  final all = await ref.read(repoProvider).getTenantOverviews();
+  return all.where((o) => o.tenant.id == tenantId).firstOrNull;
+});
+
+/// The active tenant currently living in a room (null if none).
+final roomTenantProvider =
+    FutureProvider.autoDispose.family<TenantOverview?, int>((ref, roomId) async {
+  ref.watch(dataVersionProvider);
+  final all = await ref.read(repoProvider).getTenantOverviews();
+  return all
+      .where((o) => o.tenant.isActive && o.tenant.roomId == roomId)
+      .firstOrNull;
+});
+
+final depositsProvider =
+    FutureProvider.autoDispose.family<List<DepositEntry>, int>((ref, tenantId) async {
+  ref.watch(dataVersionProvider);
+  return ref.read(repoProvider).getDeposits(tenantId);
+});
+
+final depositHeldProvider =
+    FutureProvider.autoDispose.family<int, int>((ref, tenantId) async {
+  ref.watch(dataVersionProvider);
+  return ref.read(repoProvider).depositHeld(tenantId);
+});
+
+/// All invoices (key = null) or one tenant's invoices.
+final chargesProvider =
+    FutureProvider.autoDispose.family<List<ChargeView>, int?>((ref, tenantId) async {
+  ref.watch(dataVersionProvider);
+  return ref.read(repoProvider).getCharges(tenantId: tenantId);
+});
+
+final chargeProvider =
+    FutureProvider.autoDispose.family<ChargeView?, int>((ref, id) async {
+  ref.watch(dataVersionProvider);
+  return ref.read(repoProvider).getCharge(id);
+});
+
+final paymentsProvider =
+    FutureProvider.autoDispose.family<List<Payment>, int>((ref, chargeId) async {
+  ref.watch(dataVersionProvider);
+  return ref.read(repoProvider).getPayments(chargeId);
+});
+
+final collectedThisMonthProvider = FutureProvider.autoDispose<int>((ref) async {
+  ref.watch(dataVersionProvider);
+  final now = todayDate();
+  final from = DateTime(now.year, now.month, 1);
+  final to = DateTime(now.year, now.month + 1, 1);
+  return ref.read(repoProvider).collectedBetween(from, to);
+});
