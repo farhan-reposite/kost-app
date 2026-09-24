@@ -62,6 +62,7 @@ class Room {
     required this.name,
     required this.price,
     required this.status,
+    this.capacity = 1,
     this.facilities = const [],
     this.notes = '',
   });
@@ -70,6 +71,9 @@ class Room {
   final String name;
   final int price;
   final RoomStatus status;
+
+  /// How many tenants can live in this room at the same time.
+  final int capacity;
   final List<String> facilities;
   final String notes;
 
@@ -78,6 +82,7 @@ class Room {
         'name': name,
         'price': price,
         'status': status.name,
+        'capacity': capacity,
         'facilities': facilities.join('|'),
         'notes': notes,
       };
@@ -89,6 +94,7 @@ class Room {
       name: m['name'] as String,
       price: m['price'] as int,
       status: RoomStatus.parse(m['status'] as String),
+      capacity: (m['capacity'] as int?) ?? 1,
       facilities: raw.isEmpty ? <String>[] : raw.split('|'),
       notes: m['notes'] as String? ?? '',
     );
@@ -329,14 +335,23 @@ class DepositEntry {
 class RoomOverview {
   const RoomOverview({
     required this.room,
-    this.tenant,
+    this.tenants = const [],
     this.coverPhoto,
     this.nextDue,
   });
   final Room room;
-  final Tenant? tenant;
+
+  /// All currently active tenants living in this room (a room may hold more
+  /// than one when [Room.capacity] is greater than 1).
+  final List<Tenant> tenants;
   final String? coverPhoto;
+
+  /// The soonest upcoming due date among this room's tenants, if any.
   final DateTime? nextDue;
+
+  bool get isFull => tenants.length >= room.capacity;
+  int get vacancies =>
+      (room.capacity - tenants.length) < 0 ? 0 : room.capacity - tenants.length;
 }
 
 class TenantOverview {

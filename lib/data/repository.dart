@@ -44,9 +44,11 @@ class KostRepository {
     final rooms = await getRooms();
 
     final tenantRows = await db.query('tenants', where: 'is_active = 1');
-    final byRoom = <int, Tenant>{};
+    final byRoom = <int, List<Tenant>>{};
     for (final t in tenantRows.map(Tenant.fromMap)) {
-      if (t.roomId != null) byRoom[t.roomId!] = t;
+      if (t.roomId != null) {
+        byRoom.putIfAbsent(t.roomId!, () => []).add(t);
+      }
     }
 
     final coverRows = await db.rawQuery(
@@ -58,12 +60,19 @@ class KostRepository {
     final nextDues = await _nextDueMap();
 
     return rooms.map((room) {
-      final tenant = byRoom[room.id];
+      final tenants = byRoom[room.id] ?? const <Tenant>[];
+      DateTime? earliest;
+      for (final t in tenants) {
+        final due = nextDues[t.id];
+        if (due != null && (earliest == null || due.isBefore(earliest))) {
+          earliest = due;
+        }
+      }
       return RoomOverview(
         room: room,
-        tenant: tenant,
+        tenants: tenants,
         coverPhoto: covers[room.id],
-        nextDue: tenant == null ? null : nextDues[tenant.id],
+        nextDue: earliest,
       );
     }).toList();
   }
@@ -179,20 +188,34 @@ class KostRepository {
           .query('rooms', where: 'id = ?', whereArgs: [t.roomId], limit: 1);
       if (roomRows.isEmpty) throw KostException('Room not found.');
       final room = Room.fromMap(roomRows.first);
-      if (room.status == RoomStatus.occupied) {
-        throw KostException('This room already has a tenant.');
-      }
       if (room.status == RoomStatus.maintenance) {
         throw KostException(
             'This room is under maintenance. Change its status first.');
+      }
+      final activeCountRows = await txn.rawQuery(
+          'SELECT COUNT(*) AS c FROM tenants WHERE room_id = ? AND is_active = 1',
+          [t.roomId]);
+      final activeCount = (activeCountRows.first['c'] as int?) ?? 0;
+      if (activeCount >= room.capacity) {
+        throw KostException(room.capacity <= 1
+            ? 'This room already has a tenant.'
+            : 'This room is already full (${room.capacity} tenant${room.capacity == 1 ? '' : 's'} max).');
       }
 
       final map = t.toMap();
       map['room_name'] = room.name;
       final tenantId = await txn.insert('tenants', map);
 
-      await txn.update('rooms', {'status': RoomStatus.occupied.name},
-          where: 'id = ?', whereArgs: [t.roomId]);
+      final newCount = activeCount + 1;
+      await txn.update(
+          'rooms',
+          {
+            'status': newCount >= room.capacity
+                ? RoomStatus.occupied.name
+                : RoomStatus.available.name
+          },
+          where: 'id = ?',
+          whereArgs: [t.roomId]);
 
       if (deposit > 0) {
         await txn.insert('deposits', {
@@ -266,8 +289,26 @@ class KostRepository {
           [tenantId, date]);
 
       if (tenant.roomId != null) {
-        await txn.update('rooms', {'status': RoomStatus.available.name},
-            where: 'id = ?', whereArgs: [tenant.roomId]);
+        final roomRows = await txn.query('rooms',
+            where: 'id = ?', whereArgs: [tenant.roomId], limit: 1);
+        if (roomRows.isNotEmpty) {
+          final room = Room.fromMap(roomRows.first);
+          if (room.status != RoomStatus.maintenance) {
+            final remainingRows = await txn.rawQuery(
+                'SELECT COUNT(*) AS c FROM tenants WHERE room_id = ? AND is_active = 1',
+                [tenant.roomId]);
+            final remaining = (remainingRows.first['c'] as int?) ?? 0;
+            await txn.update(
+                'rooms',
+                {
+                  'status': remaining >= room.capacity && room.capacity > 0
+                      ? RoomStatus.occupied.name
+                      : RoomStatus.available.name
+                },
+                where: 'id = ?',
+                whereArgs: [tenant.roomId]);
+          }
+        }
       }
     });
   }
@@ -544,6 +585,16 @@ class KostRepository {
   Future<void> saveProfile(KostProfile profile) async {
     await _setSetting('kost_name', profile.name);
     await _setSetting('payment_info', profile.paymentInfo);
+  }
+
+  /// 'system', 'light' or 'dark'. Stored as plain text so this data layer
+  /// doesn't need to depend on Flutter's ThemeMode type.
+  Future<String> getThemeModeSetting() async {
+    return await _getSetting('theme_mode') ?? 'system';
+  }
+
+  Future<void> setThemeModeSetting(String value) async {
+    await _setSetting('theme_mode', value);
   }
 
   // ---------------------------------------------------------------- export

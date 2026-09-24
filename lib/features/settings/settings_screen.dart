@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/backup_service.dart';
 import '../../core/widgets/common.dart';
+import '../../core/widgets/kost_logo.dart';
 import '../../data/models.dart';
 import '../../data/repository.dart';
 import '../../providers.dart';
@@ -93,8 +94,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final themeMode = ref.watch(themeModeProvider);
     return Scaffold(
       appBar: AppBar(
+        leadingWidth: 56,
+        leading: const Padding(
+          padding: EdgeInsets.all(12),
+          child: KostLogo(size: 28),
+        ),
         title: const Text('Settings'),
         bottom: _busy
             ? const PreferredSize(
@@ -113,12 +120,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               appTextField(
                 controller: _name,
                 label: 'Kost name',
+                icon: Icons.storefront_outlined,
                 capitalization: TextCapitalization.words,
                 helper: 'Shown on invoices',
               ),
               appTextField(
                 controller: _paymentInfo,
                 label: 'Payment instructions',
+                icon: Icons.account_balance_outlined,
                 maxLines: 3,
                 helper: 'e.g. BCA 1234567890 a/n Your Name. Shown on invoices and WhatsApp messages.',
               ),
@@ -128,6 +137,44 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   onPressed: _saveProfile,
                   child: const Text('Save'),
                 ),
+              ),
+            ],
+          ),
+          SectionCard(
+            title: 'Appearance',
+            children: [
+              Text(
+                'Choose how Kost Manager looks on this phone.',
+                style: TextStyle(color: scheme.onSurfaceVariant),
+              ),
+              const SizedBox(height: 12),
+              SegmentedButton<ThemeMode>(
+                segments: const [
+                  ButtonSegment(
+                    value: ThemeMode.system,
+                    label: Text('System'),
+                    icon: Icon(Icons.brightness_auto_outlined),
+                  ),
+                  ButtonSegment(
+                    value: ThemeMode.light,
+                    label: Text('Light'),
+                    icon: Icon(Icons.light_mode_outlined),
+                  ),
+                  ButtonSegment(
+                    value: ThemeMode.dark,
+                    label: Text('Dark'),
+                    icon: Icon(Icons.dark_mode_outlined),
+                  ),
+                ],
+                selected: {themeMode},
+                showSelectedIcon: false,
+                onSelectionChanged: (selection) async {
+                  final mode = selection.first;
+                  ref.read(themeModeProvider.notifier).state = mode;
+                  await ref
+                      .read(repoProvider)
+                      .setThemeModeSetting(themeModeToSetting(mode));
+                },
               ),
             ],
           ),

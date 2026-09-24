@@ -10,7 +10,7 @@ class AppDatabase {
   static final AppDatabase instance = AppDatabase._();
 
   static const String fileName = 'kost.db';
-  static const int version = 1;
+  static const int version = 2;
 
   Future<Database>? _opening;
 
@@ -26,7 +26,16 @@ class AppDatabase {
         await db.execute('PRAGMA foreign_keys = ON');
       },
       onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
     );
+  }
+
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      // Rooms can now hold more than one tenant at once.
+      await db.execute(
+          "ALTER TABLE rooms ADD COLUMN capacity INTEGER NOT NULL DEFAULT 1");
+    }
   }
 
   /// Closes the connection (used before backup/restore). It reopens lazily.
@@ -46,6 +55,7 @@ class AppDatabase {
         name TEXT NOT NULL UNIQUE COLLATE NOCASE,
         price INTEGER NOT NULL,
         status TEXT NOT NULL,
+        capacity INTEGER NOT NULL DEFAULT 1,
         facilities TEXT NOT NULL DEFAULT '',
         notes TEXT NOT NULL DEFAULT ''
       )''');

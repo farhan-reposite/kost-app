@@ -20,7 +20,7 @@ class RoomDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final roomAsync = ref.watch(roomProvider(roomId));
-    final tenantAsync = ref.watch(roomTenantProvider(roomId));
+    final tenantsAsync = ref.watch(roomTenantsProvider(roomId));
     final room = roomAsync.valueOrNull;
 
     if (room == null) {
@@ -31,8 +31,11 @@ class RoomDetailScreen extends ConsumerWidget {
             : const SizedBox.shrink(),
       );
     }
-    final overview = tenantAsync.valueOrNull;
+    final overviews = tenantsAsync.valueOrNull;
     final scheme = Theme.of(context).colorScheme;
+    final capacity = room.capacity < 1 ? 1 : room.capacity;
+    final occupantCount = overviews?.length ?? 0;
+    final hasVacancy = overviews != null && occupantCount < capacity;
 
     return Scaffold(
       appBar: AppBar(
@@ -45,7 +48,7 @@ class RoomDetailScreen extends ConsumerWidget {
               MaterialPageRoute(
                 builder: (_) => RoomFormScreen(
                   room: room,
-                  hasTenant: overview != null,
+                  tenantCount: occupantCount,
                 ),
               ),
             ),
@@ -66,6 +69,7 @@ class RoomDetailScreen extends ConsumerWidget {
             trailing: RoomStatusPill(room.status),
             children: [
               InfoRow('Price', '${rp(room.price)} / month'),
+              InfoRow('Capacity', '$occupantCount / $capacity tenant${capacity == 1 ? '' : 's'}'),
               if (room.notes.isNotEmpty) InfoRow('Notes', room.notes),
               const SizedBox(height: 8),
               Text('Facilities',
@@ -87,36 +91,57 @@ class RoomDetailScreen extends ConsumerWidget {
                 ),
             ],
           ),
-          if (!tenantAsync.hasValue)
+          if (!tenantsAsync.hasValue)
             const Padding(
               padding: EdgeInsets.all(24),
               child: Center(child: CircularProgressIndicator()),
             )
-          else if (overview != null)
-            _CurrentTenantCard(overview: overview)
-          else
-            SectionCard(
-              title: 'Tenant',
-              children: [
-                const Text('No tenant in this room.'),
-                const SizedBox(height: 12),
-                if (room.status == RoomStatus.maintenance)
-                  Text(
-                    'This room is under maintenance. Set it to Available or Reserved (Edit room) before adding a tenant.',
-                    style: TextStyle(color: scheme.onSurfaceVariant),
-                  )
-                else
-                  FilledButton.icon(
-                    icon: const Icon(Icons.person_add_alt_1),
-                    label: const Text('Add tenant'),
-                    onPressed: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => TenantFormScreen(roomId: room.id),
+          else ...[
+            for (final overview in overviews!)
+              _CurrentTenantCard(overview: overview),
+            if (overviews.isEmpty)
+              SectionCard(
+                title: 'Tenants',
+                children: [
+                  const Text('No tenant in this room.'),
+                  const SizedBox(height: 12),
+                  if (room.status == RoomStatus.maintenance)
+                    Text(
+                      'This room is under maintenance. Set it to Available or Reserved (Edit room) before adding a tenant.',
+                      style: TextStyle(color: scheme.onSurfaceVariant),
+                    )
+                  else
+                    FilledButton.icon(
+                      icon: const Icon(Icons.person_add_alt_1),
+                      label: const Text('Add tenant'),
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => TenantFormScreen(roomId: room.id),
+                        ),
                       ),
                     ),
-                  ),
-              ],
-            ),
+                ],
+              )
+            else if (hasVacancy)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: room.status == RoomStatus.maintenance
+                    ? Text(
+                        'This room is under maintenance. Set it to Available or Reserved (Edit room) before adding another tenant.',
+                        style: TextStyle(color: scheme.onSurfaceVariant),
+                      )
+                    : OutlinedButton.icon(
+                        icon: const Icon(Icons.person_add_alt_1),
+                        label: Text(
+                            '+ Add tenant (${capacity - occupantCount} more space${capacity - occupantCount == 1 ? '' : 's'})'),
+                        onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => TenantFormScreen(roomId: room.id),
+                          ),
+                        ),
+                      ),
+              ),
+          ],
         ],
       ),
     );
@@ -242,7 +267,7 @@ class _CurrentTenantCard extends ConsumerWidget {
     final due = overview.nextDue;
 
     return SectionCard(
-      title: 'Current tenant',
+      title: 'Tenant',
       children: [
         Row(
           children: [

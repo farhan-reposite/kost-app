@@ -288,6 +288,7 @@ class _RecordPaymentSheetState extends ConsumerState<RecordPaymentSheet> {
             moneyField(
               controller: _amount,
               label: 'Amount received',
+              icon: Icons.payments_outlined,
               helper: 'Enter less than the balance for a partial payment',
             ),
             DateField(
@@ -331,7 +332,11 @@ class _RecordPaymentSheetState extends ConsumerState<RecordPaymentSheet> {
               ],
             ),
             const SizedBox(height: 16),
-            appTextField(controller: _note, label: 'Note (optional)'),
+            appTextField(
+              controller: _note,
+              label: 'Note (optional)',
+              icon: Icons.note_alt_outlined,
+            ),
             FilledButton(
               onPressed: _busy ? null : _save,
               child: const Text('Save payment'),

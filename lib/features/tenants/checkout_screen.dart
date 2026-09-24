@@ -122,12 +122,14 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
           moneyField(
             controller: _deduction,
             label: 'Deduction (optional)',
+            icon: Icons.remove_circle_outline,
             onChanged: (_) => setState(() {}),
             errorText: tooMuch ? 'More than the deposit held' : null,
           ),
           appTextField(
             controller: _reason,
             label: 'Reason for deduction',
+            icon: Icons.description_outlined,
             helper: 'e.g. unpaid rent, broken window',
           ),
           const Divider(height: 32),

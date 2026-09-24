@@ -268,6 +268,7 @@ class _TenantFormScreenState extends ConsumerState<TenantFormScreen> {
             appTextField(
               controller: _name,
               label: 'Full name',
+              icon: Icons.person_outline,
               capitalization: TextCapitalization.words,
               validator: (v) =>
                   (v == null || v.trim().isEmpty) ? 'Enter the name' : null,
@@ -275,12 +276,14 @@ class _TenantFormScreenState extends ConsumerState<TenantFormScreen> {
             appTextField(
               controller: _phone,
               label: 'Phone / WhatsApp',
+              icon: Icons.chat_outlined,
               type: TextInputType.phone,
               helper: 'Used for WhatsApp invoices and reminders',
             ),
             appTextField(
               controller: _idNumber,
               label: 'ID number (KTP / NIK)',
+              icon: Icons.badge_outlined,
               type: TextInputType.number,
             ),
             Row(
@@ -322,16 +325,19 @@ class _TenantFormScreenState extends ConsumerState<TenantFormScreen> {
             appTextField(
               controller: _institution,
               label: 'School / workplace',
+              icon: Icons.work_outline,
               capitalization: TextCapitalization.words,
             ),
             appTextField(
               controller: _institutionAddress,
               label: 'School / workplace address',
+              icon: Icons.location_on_outlined,
               maxLines: 2,
             ),
             appTextField(
               controller: _homeAddress,
               label: 'Home address',
+              icon: Icons.home_outlined,
               maxLines: 2,
             ),
 
@@ -340,20 +346,24 @@ class _TenantFormScreenState extends ConsumerState<TenantFormScreen> {
             appTextField(
               controller: _emName,
               label: 'Contact name',
+              icon: Icons.contact_phone_outlined,
               capitalization: TextCapitalization.words,
             ),
             appTextField(
               controller: _emRelation,
               label: 'Relationship (e.g. mother, brother)',
+              icon: Icons.groups_outlined,
             ),
             appTextField(
               controller: _emPhone,
               label: 'Contact phone',
+              icon: Icons.phone_outlined,
               type: TextInputType.phone,
             ),
             appTextField(
               controller: _emAddress,
               label: 'Contact address',
+              icon: Icons.place_outlined,
               maxLines: 2,
             ),
 
@@ -397,6 +407,7 @@ class _TenantFormScreenState extends ConsumerState<TenantFormScreen> {
             moneyField(
               controller: _rent,
               label: 'Rent per month',
+              icon: Icons.payments_outlined,
               onChanged: (_) => _rentTouched = true,
               validator: (v) {
                 final n = parseMoney(v ?? '');
@@ -410,10 +421,12 @@ class _TenantFormScreenState extends ConsumerState<TenantFormScreen> {
               moneyField(
                 controller: _deposit,
                 label: 'Deposit received (optional)',
+                icon: Icons.savings_outlined,
               ),
             appTextField(
               controller: _notes,
               label: 'Notes (optional)',
+              icon: Icons.note_alt_outlined,
               maxLines: 3,
             ),
             const SizedBox(height: 4),

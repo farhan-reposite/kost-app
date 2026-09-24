@@ -187,7 +187,11 @@ class _DepositEntrySheetState extends ConsumerState<_DepositEntrySheet> {
               ],
             ),
             const SizedBox(height: 16),
-            moneyField(controller: _amount, label: 'Amount'),
+            moneyField(
+              controller: _amount,
+              label: 'Amount',
+              icon: Icons.payments_outlined,
+            ),
             DateField(
               label: 'Date',
               value: _date,
@@ -195,7 +199,11 @@ class _DepositEntrySheetState extends ConsumerState<_DepositEntrySheet> {
                 if (d != null) setState(() => _date = d);
               },
             ),
-            appTextField(controller: _note, label: 'Note (optional)'),
+            appTextField(
+              controller: _note,
+              label: 'Note (optional)',
+              icon: Icons.note_alt_outlined,
+            ),
             FilledButton(
               onPressed: _busy ? null : _save,
               child: const Text('Save'),

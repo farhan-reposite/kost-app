@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/utils/format.dart';
 import '../../core/widgets/common.dart';
+import '../../core/widgets/kost_logo.dart';
 import '../../data/models.dart';
 import '../../providers.dart';
 import 'tenant_detail_screen.dart';
@@ -19,35 +20,45 @@ class TenantsScreen extends ConsumerWidget {
       length: 2,
       child: Scaffold(
         appBar: AppBar(
+          leadingWidth: 56,
+          leading: const Padding(
+            padding: EdgeInsets.all(12),
+            child: KostLogo(size: 28),
+          ),
           title: const Text('Tenants'),
           bottom: const TabBar(
-            tabs: [Tab(text: 'Active'), Tab(text: 'Former')],
+            tabs: [
+              Tab(text: 'Active'),
+              Tab(text: 'Former'),
+            ],
           ),
         ),
         floatingActionButton: FloatingActionButton.extended(
-          onPressed: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const TenantFormScreen()),
-          ),
+          onPressed: () => Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const TenantFormScreen())),
           icon: const Icon(Icons.person_add_alt_1),
           label: const Text('Add tenant'),
         ),
-        body: tenants.ui(data: (all) {
-          final active = all.where((o) => o.tenant.isActive).toList();
-          final former = all.where((o) => !o.tenant.isActive).toList();
-          return TabBarView(
-            children: [
-              _TenantList(
-                items: active,
-                emptyMessage:
-                    'No active tenants.\nTap "Add tenant" to check someone in.',
-              ),
-              _TenantList(
-                items: former,
-                emptyMessage: 'No former tenants yet.',
-              ),
-            ],
-          );
-        }),
+        body: tenants.ui(
+          data: (all) {
+            final active = all.where((o) => o.tenant.isActive).toList();
+            final former = all.where((o) => !o.tenant.isActive).toList();
+            return TabBarView(
+              children: [
+                _TenantList(
+                  items: active,
+                  emptyMessage:
+                      'No active tenants.\nTap "Add tenant" to check someone in.',
+                ),
+                _TenantList(
+                  items: former,
+                  emptyMessage: 'No former tenants yet.',
+                ),
+              ],
+            );
+          },
+        ),
       ),
     );
   }
@@ -102,9 +113,8 @@ class _TenantList extends StatelessWidget {
           trailing: overdue
               ? const PaymentStatusPill(PaymentStatus.overdue)
               : (!t.isActive && o.outstanding > 0)
-                  ? Text(rp(o.outstanding),
-                      style: TextStyle(color: scheme.error))
-                  : null,
+              ? Text(rp(o.outstanding), style: TextStyle(color: scheme.error))
+              : null,
           onTap: () => Navigator.of(context).push(
             MaterialPageRoute(
               builder: (_) => TenantDetailScreen(tenantId: t.id!),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/utils/format.dart';
@@ -8,13 +9,15 @@ import '../../data/repository.dart';
 import '../../providers.dart';
 
 class RoomFormScreen extends ConsumerStatefulWidget {
-  const RoomFormScreen({super.key, this.room, this.hasTenant = false});
+  const RoomFormScreen({super.key, this.room, this.tenantCount = 0});
 
   /// null = add a new room.
   final Room? room;
 
-  /// An occupied room's status is controlled by check-in / check-out.
-  final bool hasTenant;
+  /// How many active tenants currently live in this room. An occupied
+  /// room's status is controlled by check-in / check-out, and capacity
+  /// can't be set below this number.
+  final int tenantCount;
 
   @override
   ConsumerState<RoomFormScreen> createState() => _RoomFormScreenState();
@@ -24,6 +27,7 @@ class _RoomFormScreenState extends ConsumerState<RoomFormScreen> {
   final _formKey = GlobalKey<FormState>();
   final _name = TextEditingController();
   final _price = TextEditingController();
+  final _capacity = TextEditingController();
   final _notes = TextEditingController();
   final _custom = TextEditingController();
   final List<String> _facilities = [];
@@ -31,6 +35,7 @@ class _RoomFormScreenState extends ConsumerState<RoomFormScreen> {
   bool _saving = false;
 
   bool get _editing => widget.room != null;
+  bool get _hasTenant => widget.tenantCount > 0;
 
   @override
   void initState() {
@@ -39,12 +44,15 @@ class _RoomFormScreenState extends ConsumerState<RoomFormScreen> {
     if (r != null) {
       _name.text = r.name;
       _price.text = r.price.toString();
+      _capacity.text = r.capacity.toString();
       _notes.text = r.notes;
       _facilities.addAll(r.facilities);
       _status = r.status;
-      if (!widget.hasTenant && _status == RoomStatus.occupied) {
+      if (!_hasTenant && _status == RoomStatus.occupied) {
         _status = RoomStatus.available;
       }
+    } else {
+      _capacity.text = '1';
     }
   }
 
@@ -52,6 +60,7 @@ class _RoomFormScreenState extends ConsumerState<RoomFormScreen> {
   void dispose() {
     _name.dispose();
     _price.dispose();
+    _capacity.dispose();
     _notes.dispose();
     _custom.dispose();
     super.dispose();
@@ -70,11 +79,13 @@ class _RoomFormScreenState extends ConsumerState<RoomFormScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
     final repo = ref.read(repoProvider);
+    final capacity = int.tryParse(_capacity.text.trim()) ?? 1;
     final room = Room(
       id: widget.room?.id,
       name: _name.text.trim(),
       price: parseMoney(_price.text) ?? 0,
-      status: widget.hasTenant ? RoomStatus.occupied : _status,
+      status: _hasTenant ? widget.room!.status : _status,
+      capacity: capacity,
       facilities: List<String>.from(_facilities),
       notes: _notes.text.trim(),
     );
@@ -111,6 +122,7 @@ class _RoomFormScreenState extends ConsumerState<RoomFormScreen> {
             appTextField(
               controller: _name,
               label: 'Room name / number',
+              icon: Icons.meeting_room_outlined,
               capitalization: TextCapitalization.characters,
               validator: (v) =>
                   (v == null || v.trim().isEmpty) ? 'Enter a room name' : null,
@@ -118,16 +130,42 @@ class _RoomFormScreenState extends ConsumerState<RoomFormScreen> {
             moneyField(
               controller: _price,
               label: 'Price per month',
+              icon: Icons.sell_outlined,
               validator: (v) {
                 final n = parseMoney(v ?? '');
                 return (n == null || n <= 0) ? 'Enter the monthly price' : null;
               },
             ),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: TextFormField(
+                controller: _capacity,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                decoration: InputDecoration(
+                  labelText: 'Room capacity (number of tenants)',
+                  prefixIcon: const Icon(Icons.groups_outlined),
+                  helperText: _hasTenant
+                      ? '${widget.tenantCount} tenant${widget.tenantCount == 1 ? '' : 's'} currently in this room'
+                      : 'How many tenants can share this room',
+                ),
+                validator: (v) {
+                  final n = int.tryParse((v ?? '').trim());
+                  if (n == null || n < 1) return 'Enter at least 1';
+                  if (n < widget.tenantCount) {
+                    return 'Can\'t be less than the ${widget.tenantCount} tenant${widget.tenantCount == 1 ? '' : 's'} already here';
+                  }
+                  return null;
+                },
+              ),
+            ),
             Text('Status', style: Theme.of(context).textTheme.titleSmall),
             const SizedBox(height: 8),
-            if (widget.hasTenant)
-              const Text(
-                'Occupied - this room has a tenant. The status changes automatically when the tenant checks out.',
+            if (_hasTenant)
+              Text(
+                _status == RoomStatus.occupied
+                    ? 'Occupied - this room is full. The status changes automatically as tenants check in or out.'
+                    : 'Partially occupied - this room still has space. The status changes automatically as tenants check in or out.',
               )
             else
               Wrap(
@@ -175,7 +213,7 @@ class _RoomFormScreenState extends ConsumerState<RoomFormScreen> {
                     textCapitalization: TextCapitalization.sentences,
                     decoration: const InputDecoration(
                       labelText: 'Other facility',
-                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.add_circle_outline),
                     ),
                     onSubmitted: (_) => _addCustom(),
                   ),
@@ -192,6 +230,7 @@ class _RoomFormScreenState extends ConsumerState<RoomFormScreen> {
             appTextField(
               controller: _notes,
               label: 'Notes (optional)',
+              icon: Icons.note_alt_outlined,
               maxLines: 3,
             ),
             if (!_editing)

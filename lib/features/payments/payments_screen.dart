@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/utils/date_helpers.dart';
 import '../../core/utils/format.dart';
 import '../../core/widgets/common.dart';
+import '../../core/widgets/kost_logo.dart';
 import '../../data/models.dart';
 import '../../providers.dart';
 import 'charge_detail_screen.dart';
@@ -34,7 +35,14 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
     final collected = ref.watch(collectedThisMonthProvider).valueOrNull;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Payments')),
+      appBar: AppBar(
+        leadingWidth: 56,
+        leading: const Padding(
+          padding: EdgeInsets.all(12),
+          child: KostLogo(size: 28),
+        ),
+        title: const Text('Payments'),
+      ),
       body: charges.ui(data: (all) {
         final today = todayDate();
         var outstanding = 0;

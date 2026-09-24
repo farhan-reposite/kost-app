@@ -331,7 +331,6 @@ class DateField extends StatelessWidget {
         child: InputDecorator(
           decoration: InputDecoration(
             labelText: label,
-            border: const OutlineInputBorder(),
             errorText: errorText,
             enabled: enabled,
             suffixIcon: clearable && value != null && enabled
@@ -357,6 +356,7 @@ Widget appTextField({
   TextCapitalization capitalization = TextCapitalization.sentences,
   ValueChanged<String>? onChanged,
   String? helper,
+  IconData? icon,
 }) {
   return Padding(
     padding: const EdgeInsets.only(bottom: 12),
@@ -370,7 +370,10 @@ Widget appTextField({
       decoration: InputDecoration(
         labelText: label,
         helperText: helper,
-        border: const OutlineInputBorder(),
+        prefixIcon: icon == null ? null : Icon(icon),
+        // Multi-line fields look better with the icon riding the top of the
+        // box rather than centered in the whole (taller) field.
+        alignLabelWithHint: maxLines > 1,
       ),
     ),
   );
@@ -384,6 +387,7 @@ Widget moneyField({
   bool enabled = true,
   String? helper,
   String? errorText,
+  IconData? icon,
 }) {
   return Padding(
     padding: const EdgeInsets.only(bottom: 12),
@@ -397,9 +401,9 @@ Widget moneyField({
       decoration: InputDecoration(
         labelText: label,
         prefixText: 'Rp ',
+        prefixIcon: icon == null ? null : Icon(icon),
         helperText: helper,
         errorText: errorText,
-        border: const OutlineInputBorder(),
       ),
     ),
   );

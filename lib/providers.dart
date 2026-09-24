@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/db/database.dart';
@@ -7,6 +8,26 @@ import 'data/repository.dart';
 
 final repoProvider =
     Provider<KostRepository>((ref) => KostRepository(AppDatabase.instance));
+
+// ------------------------------------------------------------- appearance
+
+/// The current light/dark/system setting. main() overrides its initial
+/// value with whatever was last saved, so there's no flash of the wrong
+/// theme on launch; the settings screen updates it (and persists the
+/// change) whenever the user picks a different option.
+final themeModeProvider = StateProvider<ThemeMode>((ref) => ThemeMode.system);
+
+ThemeMode themeModeFromSetting(String value) => switch (value) {
+      'light' => ThemeMode.light,
+      'dark' => ThemeMode.dark,
+      _ => ThemeMode.system,
+    };
+
+String themeModeToSetting(ThemeMode mode) => switch (mode) {
+      ThemeMode.light => 'light',
+      ThemeMode.dark => 'dark',
+      ThemeMode.system => 'system',
+    };
 
 /// Every data provider watches this. After any write, call [notifyChanged]
 /// and all screens refresh themselves.
@@ -47,14 +68,15 @@ final tenantOverviewProvider =
   return all.where((o) => o.tenant.id == tenantId).firstOrNull;
 });
 
-/// The active tenant currently living in a room (null if none).
-final roomTenantProvider =
-    FutureProvider.autoDispose.family<TenantOverview?, int>((ref, roomId) async {
+/// All active tenants currently living in a room (a room may hold more than
+/// one when its capacity is greater than 1).
+final roomTenantsProvider =
+    FutureProvider.autoDispose.family<List<TenantOverview>, int>((ref, roomId) async {
   ref.watch(dataVersionProvider);
   final all = await ref.read(repoProvider).getTenantOverviews();
   return all
       .where((o) => o.tenant.isActive && o.tenant.roomId == roomId)
-      .firstOrNull;
+      .toList();
 });
 
 final depositsProvider =
